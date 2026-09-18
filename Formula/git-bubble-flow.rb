@@ -49,7 +49,7 @@ class GitBubbleFlow < Formula
       rewritten = s.gsub!(
         /\.package\(\s*url:\s*"[^"]*swift-subprocess[^"]*",\s*from:\s*"[^"]*",\s*traits:\s*\[\]\s*\),/m,
         '.package(path: "vendor/swift-subprocess", traits: []), ' \
-        '.package(path: "vendor/swift-system"),'
+        '.package(path: "vendor/swift-system"),',
       )
       # Without this the build silently falls back to resolving the dependency
       # from the network, which Homebrew forbids and which would fail late and
@@ -63,7 +63,7 @@ class GitBubbleFlow < Formula
     inreplace buildpath/"vendor/swift-subprocess/Package.swift" do |s|
       rewritten = s.gsub!(
         /\.package\(\s*url:\s*"[^"]*swift-system[^"]*",[^)]*\)/m,
-        '.package(path: "../swift-system")'
+        '.package(path: "../swift-system")',
       )
       odie "swift-subprocess dependency rewrite did not match" if rewritten.nil?
     end
@@ -108,7 +108,7 @@ class GitBubbleFlow < Formula
     alias_value = shell_output("git -C #{testpath} config --get alias.land").strip
     assert_match %r{#{bin}/git-bubble-flow land\z}, alias_value
 
-    output = shell_output("#{bin}/git-verify-bubble --base HEAD HEAD", 0)
+    output = shell_output("#{bin}/git-verify-bubble --base HEAD HEAD")
     assert_match "No bubbles found to verify", output
   end
 end
