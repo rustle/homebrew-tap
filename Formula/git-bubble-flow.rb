@@ -12,8 +12,8 @@
 class GitBubbleFlow < Formula
   desc "Semi-linear git-flow tooling: empty, nestable bubble merges"
   homepage "https://github.com/rustle/git-bubble-flow"
-  url "https://github.com/rustle/git-bubble-flow/archive/refs/tags/0.1.0.tar.gz"
-  sha256 "8e5271b71323586620c8696711e68e1656c97708dfbf1e1b92710edc86ed35fc"
+  url "https://github.com/rustle/git-bubble-flow/archive/refs/tags/0.2.0.tar.gz"
+  sha256 "9b74dff3ee5f887cf2a6bb952d1b6bf054a626aa81b8b442cb994410d7a96817"
   license "Apache-2.0"
   head "https://github.com/rustle/git-bubble-flow.git", branch: "main"
 
@@ -83,8 +83,9 @@ class GitBubbleFlow < Formula
       Configure a repository with:
         cd /path/to/repo && bubble-flow-setup
 
-      That writes the bubbleflow.* config keys and the git aliases
-      (git land, git verify-bubble, git rebase-bubble, git bubble-absorb).
+      That writes the bubbleflow.* config keys and the `git land` alias.
+      git verify-bubble, git rebase-bubble and git bubble-absorb need no
+      alias: git finds their symlinks on PATH by itself.
     EOS
   end
 
@@ -105,10 +106,26 @@ class GitBubbleFlow < Formula
     # default, which is what a broken symlink install looks like.
     ENV["PATH"] = "#{bin}:#{ENV["PATH"]}"
     system bin/"bubble-flow-setup"
-    alias_value = shell_output("git -C #{testpath} config --get alias.land").strip
-    assert_match %r{#{bin}/git-bubble-flow land\z}, alias_value
 
-    output = shell_output("#{bin}/git-verify-bubble --base HEAD HEAD")
+    # Nothing written into the repository may name a path. An absolute one
+    # would point into this versioned keg, which the next `brew upgrade`
+    # deletes, breaking `git land` in every configured repository.
+    alias_value = shell_output("git -C #{testpath} config --get alias.land").strip
+    assert_equal "land-bubble", alias_value
+    # git config --get exits 1 for a key that is not there.
+    %w[verify-bubble rebase-bubble bubble-absorb].each do |name|
+      assert_empty shell_output("git -C #{testpath} config --get alias.#{name}", 1).strip
+    end
+
+    # Dispatch through git itself, not through the shim directly: that is the
+    # path a user takes, and the only one that exercises alias expansion and
+    # git's external-subcommand lookup.
+    output = shell_output("git -C #{testpath} verify-bubble --base HEAD HEAD")
     assert_match "No bubbles found to verify", output
+
+    # Reaching our own argument error proves `git land` resolved through the
+    # alias into the binary rather than dying in git as an unknown command.
+    output = shell_output("git -C #{testpath} land --target 2>&1", 1)
+    assert_match "--target requires a value", output
   end
 end
